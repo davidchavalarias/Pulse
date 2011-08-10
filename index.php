@@ -24,7 +24,6 @@ while ($partit=mysql_fetch_array($resultat)) {
 }
 
 $phylo_structure=create_phylo_structure($id_partition);
-//print_r($phylo_structure['hue']);
 
 
 
@@ -94,8 +93,8 @@ for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){
         echo '
           
 
-            var bal=R.ball(x1_'.$i.',y1_'.$i.', r, '.$phylo_structure['hue'][$i].');                
-            var t_'.$i.' = R.text(x1_'.$i.','.$ytrans.'-20, "'.$phylo_structure['label'][$i].'-'.$i.'-'.$phylo_structure['period1'][$i].'univ⁼'.$phylo_structure['cluster_id'][$i].'-'.$phylo_structure['count'][$i].'");           
+            var bal=R.ball(x1_'.$i.',y1_'.$i.', r, 0.5);                
+            var t_'.$i.' = R.text(x1_'.$i.','.$ytrans.'-20, "'.$phylo_structure['label'][$i].'");           
             t_'.$i.'.attr({"text-anchor":"start","font-size":20});        
             t_'.$i.'.hide();
             var c_'.$i.'=R.circle((x1_'.$i.'),y1_'.$i.', 1.5*r).attr({fill: "red",opacity:0});';
@@ -133,7 +132,11 @@ function array_search_filtered($array, $dim_filter, $dim_filter_val, $target_dim
     foreach ($array1 as $value) {
         $array_filtered[$value] = $array[$target_dim][$value];
     }
-    $result = array_keys($array_filtered, max($array_filtered));
+    if ($funct==='max'){
+        $result = array_keys($array_filtered, max($array_filtered));        
+    }else{
+        $result = array_keys($array_filtered, min($array_filtered));        
+    }
     return $result;
 }
 
@@ -188,8 +191,6 @@ function create_phylo_structure($partition_id) {
             $phylo['length_to_start'][] = 0;
             
             $phylo['exit'][] = 0; // marqueur utile pour la suite pour voir s'il le noeud doit encore être traité dans la spatialisation
-            $phylo['hue'][] = 0;
-            $phylo['count'][] = 0;
             // on récupère pères et fils            
             $resultat_sons = mysql_query("SELECT id_cluster_2_univ FROM `phylo` WHERE id_cluster_1_univ=" . $ligne['id_cluster_univ']) or die("fils non récupérés.");
             $resultat_fathers = mysql_query("SELECT id_cluster_1_univ FROM `phylo` WHERE id_cluster_2_univ=" . $ligne['id_cluster_univ']) or die("fils non récupérés.");
@@ -254,7 +255,7 @@ function create_phylo_structure($partition_id) {
     
     $y_axis = array(); // donne l'épaisseur de la phylo par période (nombre de branches parallèles
     foreach ($period_uniques as $value) {
-        $y_axis[$value] = 0;
+        $y_axis[$value] = 1;
     }unset($value);
 
 
@@ -262,7 +263,8 @@ function create_phylo_structure($partition_id) {
     $firstCandidates=array_search(max($phylo['length_to_start']),$phylo['length_to_start']);
     $phylo['exit'][$firstCandidates] = 1; // on marque comme une sortie le premier noeud, également un bout de chaine
 
-    
+    global $end_reached; // indique si on a atteint une extrémité de branche
+    $end_reached=1;
     $to_process = true; // dit s'il reste des noeuds à traiter
     $direction=1; // dit si on parcours vers le haut ou le bas (0 bas, 1 haut)
     $directionChanged=0;// dit si on vient de changer de direction
@@ -270,16 +272,13 @@ function create_phylo_structure($partition_id) {
     $next_nodes= array_search_filtered($phylo,'exit',1,'length_to_start','max');  // noeud d'ou l'on vient. Initialisé à la même valeur que le premier noeud
     $next_nodes=$next_nodes[0];
     
-    while ($to_process) {
+    while ($to_process) {        
         $previous_node=$next_nodes;      
         if ($direction==1){// on remonte la phylo                
-                $next_nodes =  array_search_filtered_sup($phylo,'exit',1,'length_to_start','max');    
-                $current_fathers=$phylo['fathers'][$previous_node];
-                pta($next_nodes);
+                $next_nodes =  array_search_filtered($phylo,'exit',max(1,max($phylo['exit'])),'length_to_start','max');                   
             if (count($next_nodes)==0){                                
                 $direction=0;
                 $directionChanged=1;
-                pt('dir change');
                 $stop+=1;
             }else{
                 $next_nodes=$next_nodes[0];            
@@ -287,22 +286,18 @@ function create_phylo_structure($partition_id) {
                 $stop=0;
             }
         }else{// on redescend la phylo            
-                $next_nodes = array_search_filtered_sup($phylo,'exit',1,'length_to_end','max');    
+                $next_nodes = array_search_filtered($phylo,'exit',min(-1,min($phylo['exit'])),'length_to_end','max');    
                 
                 // on regarde s'il y a des pères                
 //                $neighborsId=array();
 //                foreach ($next_nodes as $value){
 //                    $neighborsId[]=$phylo['cluster_id'][$next_nodes];
 //                }unset($value);
-                
-                
-                $current_sons=$phylo['sons'][$previous_node];
-            pta($next_nodes);
-            pta($current_sons);
+
             if (count($next_nodes)==0){                                
                 $direction=1;
-                $directionChanged=1;
-                pt('dir change');
+                $directionChanged=1;    
+                
                 $stop+=1;
             }else{
                 $next_nodes=$next_nodes[0];
@@ -312,59 +307,92 @@ function create_phylo_structure($partition_id) {
         }
         if (count($next_nodes)!=0) { // s'il reste des 'sorties'            
             //pt('processing node'.$phylo['label'][$next_nodes].'from periode'.$phylo['period1'][$next_nodes]);
-            $current_sons = $phylo['sons'][$next_nodes];    
-            foreach ($current_sons as $value) {
-                $index=array_search($value, $phylo['cluster_id']);
-                if ($clusters_processed[$index] == 0) {
-                    if ($direction==0){
-                        $phylo['exit'][$index] = max($phylo['exit'])+1;
-                    }else{
-                        $phylo['exit'][$index] = 1;
-                    }
-                    
-                }
-            }unset($value);
-            $current_fathers = $phylo['fathers'][$next_nodes];
-            foreach ($current_fathers as $value) {
-                $index=array_search($value, $phylo['cluster_id']);
-                if ($clusters_processed[$index] == 0) {
-                    if ($direction==0){
-                        $phylo['exit'][$index] =1;
-                    }else{
-                        $phylo['exit'][$index] = max($phylo['exit'])+1;
-                    }
-                }
-            }unset($value);
             
-//            if ($directionChanged){
-//                $ylist=array_slice($y_axis,$phylo['period1'][$next_nodes],$phylo['length_to_end'][$next_nodes]+1);
-//                $ybranch=max($ylist);
-//            }
-//            
             $phylo['x'][$next_nodes] = $phylo['period1'][$next_nodes];
-            //$y_axis[$phylo['period1'][$next_nodes]] = $y_axis[$phylo['period1'][$next_nodes]] + 1;
             
-            if ($directionChanged==0){
-                //pt($y_axis[$phylo['period1'][$previous_node]]);
+            //$y_axis[$phylo['period1'][$next_nodes]] = $y_axis[$phylo['period1'][$next_nodes]] + 1;
+            if ($end_reached==1){    
                 $y_axis[$phylo['period1'][$next_nodes]] = $y_axis[$phylo['period1'][$next_nodes]] + 1;
-            }else{                
-                $bound=sort($phylo['period1'][$next_nodes],$phylo['period1'][$previous_node]);                
+                $end_reached=0;
+            }else{                                
                 foreach ($period_uniques as $period){
-                    if (($period>=$bound[0])&&($period<=$bound[1])){
+                    if (($period>=min($phylo['period1'][$next_nodes],$phylo['period1'][$previous_node]))&&($period<=max($phylo['period1'][$next_nodes],$phylo['period1'][$previous_node]))){
                         //pt($y_axis[$phylo['period1'][$previous_node]]);
                         $y_axis[$period]=$phylo['y'][$previous_node];                       
                     }                                        
                 }
                 
             }
+
+            $m=min($phylo['exit']);
+            $M=max($phylo['exit']);
+            $periodRank=array_keys($period_uniques,$phylo['period1'][$next_nodes]);
+
+            $current_sons = $phylo['sons'][$next_nodes];                     
+            $end_reached=1;
+                         
+            foreach ($current_sons as $value) {
+                $index=array_search($value, $phylo['cluster_id']);
+                if ($clusters_processed[$index] == 0) {
+                    if ($direction==0){
+                        $phylo['exit'][$index] = $m-1;
+                        $end_reached=0;
+                    }else{
+                        $phylo['exit'][$index] = -1;
+                    }
+                    
+                }else{
+                    if($end_reached){ 
+                        $periodRankTemp=array_keys($period_uniques,$phylo['period1'][$index]);
+                        for ($per=min($periodRank[0],$periodRankTemp[0]);$per<=max($periodRank[0],$periodRankTemp[0]);$per++){
+                            if ($y_axis[$phylo['period1'][$next_nodes]]<$y_axis[$period_uniques[$per]]){
+                                $y_axis[$phylo['period1'][$next_nodes]]=$y_axis[$period_uniques[$per]]+1;
+                            }
+                        }
+                    }
+                }
+            }unset($value);
+            
+            
+            $current_fathers = $phylo['fathers'][$next_nodes];                                  
+            $end_reached=1;
+            
+            
+            foreach ($current_fathers as $value) {
+                $index=array_search($value, $phylo['cluster_id']);
+                if ($clusters_processed[$index] == 0) {
+                    if ($direction==0){
+                        $phylo['exit'][$index] =1;
+                    }else{
+                        $phylo['exit'][$index] = $M+1;
+                        $end_reached=0;
+                    }
+                }else{
+                    if($end_reached){ 
+                        $periodRankTemp=array_keys($period_uniques,$phylo['period1'][$index]);
+                        for ($per=min($periodRank[0],$periodRankTemp[0]);$per<=max($periodRank[0],$periodRankTemp[0]);$per++){
+                            if ($y_axis[$phylo['period1'][$next_nodes]]<$y_axis[$period_uniques[$per]]){
+                                $y_axis[$phylo['period1'][$next_nodes]]=$y_axis[$period_uniques[$per]]+1;
+                            }
+                        }
+                    }
+                }
+            }unset($value);
+            
+            
+//            if ($directionChanged){
+//                $ylist=array_slice($y_axis,$phylo['period1'][$next_nodes],$phylo['length_to_end'][$next_nodes]+1);
+//                $ybranch=max($ylist);
+//            }
+//            
+       
             
             
             $phylo['y'][$next_nodes] = $y_axis[$phylo['period1'][$next_nodes]];
             $clusters_processed[$next_nodes] = 1;
             $counter+=1;
-            $phylo['count'][$next_nodes]=$counter; 
-            $phylo['hue'][$next_nodes]=$counter/$nbClusters; 
             $phylo['exit'][$next_nodes] = 0;
+
         } else {
             if ($stop>2){
                 $to_process = 0;
