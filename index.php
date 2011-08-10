@@ -65,7 +65,7 @@ for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){
             '; 
         echo 'var x2_'.$nb_path.'='.($phylo_structure['x'][$index]-$period_min)*1/$timespan.'*(x-60)+40 , y2_'.$nb_path.'='.$ytrans.'+(y-'.$ytrans.')*'.(($phylo_structure['y'][$index]-1)/$ymax).';
             ';
-        echo 'var S="M"+(x1_'.$nb_path.')+ ", " + y1_'.$nb_path.' + "L" + (x2_'.$nb_path.')+ " " + y2_'.$nb_path.";
+        echo 'var S="M"+(x1_'.$nb_path.')+ "," + y1_'.$nb_path.' + "C"+(x1_'.$nb_path.'+30)+ "," + y1_'.$nb_path.'  + " " + (x2_'.$nb_path.'-30)+ "," + y2_'.$nb_path.'+ " " +(x2_'.$nb_path.')+ "," + y2_'.$nb_path.";                        
             ";
         
         echo 'var c'.$nb_path. '= R.path(S);';
