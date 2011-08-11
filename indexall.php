@@ -13,22 +13,61 @@ if ($user!="root") mysql_query("SET NAMES utf8;");
 $raphael=TRUE;
 include("include/header.php");
 
-if(isset( $_GET['id_cluster'])) $id_cluster = intval($_GET['id_cluster']); else die("<h1>Agrégat non spécifié.</h1>");
-if(isset( $_GET['periode'])) $my_period=$_GET['periode']; else die("<h1>Agrégat non spécifié.</h1>");
-$periode=$my_period;
 
 
 ///////////////// Module pour préparer la visu de phylo en Raphael
-
-$sql="SELECT pseudo FROM cluster WHERE id_cluster=".$id_cluster." AND periode=\"".derange_periode($periode)."\" ";
+$sql="SELECT periode FROM cluster GROUP BY periode";
 $resultat=mysql_query($sql) or die ("Requête non executée.");
+$nb_periodes=mysql_num_rows($resultat);
+
+
+
+$sql="SELECT id_partition FROM partitions where nb_period_covered>8 GROUP BY id_partition";
+$resultat=mysql_query($sql) or die ("Requête non executée.");
+$nb_partitions=1;//mysql_num_rows($resultat);
+
+$raphael_height=200*$nb_partitions;
+
+echo ' <script type="text/javascript" charset="utf-8">
+
+        window.onload = function () {';
+
+$nb=1;
 while ($partit=mysql_fetch_array($resultat)) {
-    $id_partition=$partit[pseudo];
+    $id_partition=$partit[id_partition];          
+        plotstream($id_partition,$nb,$nb_periodes);        
+    $nb+=1;
 }
+echo '
+        };';
+    echo '</script>';
 
+
+$sql="SELECT id_partition FROM partitions where nb_period_covered>8 GROUP BY id_partition";
+$resultat=mysql_query($sql) or die ("Requête non executée.");
+$nb_partitions=1;//mysql_num_rows($res
+
+while ($partit=mysql_fetch_array($resultat)) {
+    $id_partition=$partit[id_partition];
+echo '<div id="metro'.$id_partition.'"></div>';
+}
+//for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){
+//    foreach ($phylo_structure['sons'][$i] as $value) {
+//        pt($phylo_structure['cluster_id'][$i].'-'.$value);
+//    }}  
+    
+
+
+echo    '</body>';
+
+
+
+
+////////////////  Fonctions
+function plotstream($id_partition,$nb,$nb_stations){
+// trace une macro-branch en position $nb    
+    
 $phylo_structure=create_phylo_structure($id_partition);
-
-
 
 $ymax=max($phylo_structure['y']);
 
@@ -36,10 +75,7 @@ $ymax=max($phylo_structure['y']);
 $period_uniques = array_unique($phylo_structure['period1']);
 $timespan=max($period_uniques)-min($period_uniques);    
 $period_min=min($period_uniques);
-$myperiod1=split(' ',derange_periode($my_period));
-$dt=$myperiod1[1]-$myperiod1[0];
-$nb_stations=floor($timespan/$dt);
-$myperiod1=$myperiod1[0];
+
 $ytrans=50; // espace pour les noms de station
 $raphael_height=200;
 
@@ -49,10 +85,8 @@ $raphael_height=200;
 //    }}  
     
 echo '
-<script type="text/javascript" charset="utf-8">
 
-        window.onload = function () {
-            var R = Raphael("metro"), x =800, y ='.$raphael_height.', r = 5;
+            var R'.$id_partition.' = Raphael("metro'.$id_partition.'"), x =800, y ='.$raphael_height.', r = 5;
             d=200;            
             ';
 
@@ -71,7 +105,7 @@ for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){
         echo 'var S="M"+(x1_'.$nb_path.')+ "," + y1_'.$nb_path.' + "C"+(x1_'.$nb_path.'+30)+ "," + y1_'.$nb_path.'  + " " + (x2_'.$nb_path.'-30)+ "," + y2_'.$nb_path.'+ " " +(x2_'.$nb_path.')+ "," + y2_'.$nb_path.";                        
             ";
         
-        echo 'var c'.$nb_path. '= R.path(S);';
+        echo 'var c'.$nb_path. '= R'.$id_partition.'.path(S);';
         }
 };
 
@@ -83,12 +117,12 @@ for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){
     
     if (($id_cluster==$phylo_structure['cluster_id_local'][$i])&&($phylo_structure['period1'][$i]==$myperiod1)){
     echo '
-            R.circle((x1_'.$i.'),y1_'.$i.', 2*r);
-            var t = R.text(50,10,"'.$phylo_structure['label'][$i].'");
+            R'.$id_partition.'.circle((x1_'.$i.'),y1_'.$i.', 2*r);
+            var t = R'.$id_partition.'.text(50,10,"'.$phylo_structure['label'][$i].'");
             var twidth = t.getBBox().width; 
             var trans=twidth*Math.cos(Math.pi-10);
             t.attr({ "text-anchor":"start","font-size":22,"font-weight":"bold","fill":"grey"});        
-            var bal=R.ball(x1_'.$i.',y1_'.$i.', r, 0)                          
+            var bal=R'.$id_partition.'.ball(x1_'.$i.',y1_'.$i.', r, 0)                          
                 .click(function (event) {window.open("index.php?id_cluster='.$phylo_structure['cluster_id_local'][$i].'&periode='.$phylo_structure['period1'][$i].'-'.$phylo_structure['period2'][$i].'","_self");});                  
                 
         ';
@@ -96,11 +130,11 @@ for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){
         echo '
           
 
-            var bal=R.ball(x1_'.$i.',y1_'.$i.', r, 0.5);                
-            var t_'.$i.' = R.text(x1_'.$i.','.$ytrans.'-10, "'.$phylo_structure['label'][$i].'");           
+            var bal=R'.$id_partition.'.ball(x1_'.$i.',y1_'.$i.', r, 0.5);                
+            var t_'.$i.' = R'.$id_partition.'.text(x1_'.$i.','.$ytrans.'-10, "'.$phylo_structure['label'][$i].'");           
             t_'.$i.'.attr({"text-anchor":"start","font-size":20});        
             t_'.$i.'.hide();
-            var c_'.$i.'=R.circle((x1_'.$i.'),y1_'.$i.', 1.5*r).attr({fill: "red",opacity:0});';
+            var c_'.$i.'=R'.$id_partition.'.circle((x1_'.$i.'),y1_'.$i.', 1.5*r).attr({fill: "red",opacity:0});';
         
             
         
@@ -111,19 +145,13 @@ for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){
     }
 };
 
-echo '
-        };
-    </script>';
-
-
-
-echo '<div id="metro"></div>
-    </body>';
 
 
 
 
-////////////////  Fonctions
+
+}
+
 function array_search_filtered($array, $dim_filter, $dim_filter_val, $target_dim, $funct) {
 // tri combiné sur les array multidimentionnels
 // retourne un tableau des clef telles que:
