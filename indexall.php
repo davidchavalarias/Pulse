@@ -22,9 +22,9 @@ $nb_periodes=mysql_num_rows($resultat);
 
 
 
-$sql="SELECT id_partition FROM partitions where nb_period_covered>8 GROUP BY id_partition";
+$sql="SELECT id_partition FROM partitions where nb_period_covered>6 GROUP BY id_partition";
 $resultat=mysql_query($sql) or die ("Requête non executée.");
-$nb_partitions=1;//mysql_num_rows($resultat);
+$nb_partitions=mysql_num_rows($resultat);
 
 $raphael_height=200*$nb_partitions;
 
@@ -35,7 +35,7 @@ echo ' <script type="text/javascript" charset="utf-8">
 $nb=1;
 while ($partit=mysql_fetch_array($resultat)) {
     $id_partition=$partit[id_partition];          
-        plotstream($id_partition,$nb,$nb_periodes);        
+        plotstream($id_partition,$nb,$nb_periodes,$nb_partitions);        
     $nb+=1;
 }
 echo '
@@ -43,7 +43,7 @@ echo '
     echo '</script>';
 
 
-$sql="SELECT id_partition FROM partitions where nb_period_covered>8 GROUP BY id_partition";
+$sql="SELECT id_partition FROM partitions where nb_period_covered>6 GROUP BY id_partition";
 $resultat=mysql_query($sql) or die ("Requête non executée.");
 $nb_partitions=1;//mysql_num_rows($res
 
@@ -64,7 +64,7 @@ echo    '</body>';
 
 
 ////////////////  Fonctions
-function plotstream($id_partition,$nb,$nb_stations){
+function plotstream($id_partition,$nb,$nb_stations,$nb_partitions){
 // trace une macro-branch en position $nb    
     
 $phylo_structure=create_phylo_structure($id_partition);
@@ -76,8 +76,8 @@ $period_uniques = array_unique($phylo_structure['period1']);
 $timespan=max($period_uniques)-min($period_uniques);    
 $period_min=min($period_uniques);
 
-$ytrans=50; // espace pour les noms de station
-$raphael_height=200;
+$ytrans=0; // espace pour les noms de station
+$raphael_height=80;
 
 //for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){
 //    foreach ($phylo_structure['sons'][$i] as $value) {
@@ -86,7 +86,7 @@ $raphael_height=200;
     
 echo '
 
-            var R'.$id_partition.' = Raphael("metro'.$id_partition.'"), x =800, y ='.$raphael_height.', r = 5;
+            var R'.$id_partition.' = Raphael("metro'.$id_partition.'",800,100), x =800, y ='.$raphael_height.', r = 3;
             d=200;            
             ';
 
@@ -130,7 +130,7 @@ for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){
         echo '
           
 
-            var bal=R'.$id_partition.'.ball(x1_'.$i.',y1_'.$i.', r, 0.5);                
+            var bal=R'.$id_partition.'.ball(x1_'.$i.',y1_'.$i.', r, '.$id_partition/$nb_partitions.');                
             var t_'.$i.' = R'.$id_partition.'.text(x1_'.$i.','.$ytrans.'-10, "'.$phylo_structure['label'][$i].'");           
             t_'.$i.'.attr({"text-anchor":"start","font-size":20});        
             t_'.$i.'.hide();
@@ -360,7 +360,11 @@ function create_phylo_structure($partition_id) {
             $periodRank=array_keys($period_uniques,$phylo['period1'][$next_nodes]);
 
             $current_sons = $phylo['sons'][$next_nodes];                     
-            $end_reached=1;
+            
+              if ($direction==0){
+                $end_reached=1;
+            }
+            
                          
             foreach ($current_sons as $value) {
                 $index=array_search($value, $phylo['cluster_id']);
@@ -386,7 +390,10 @@ function create_phylo_structure($partition_id) {
             
             
             $current_fathers = $phylo['fathers'][$next_nodes];                                  
-            $end_reached=1;
+              if ($direction==1){
+                $end_reached=1;
+            }
+            
             
             
             foreach ($current_fathers as $value) {

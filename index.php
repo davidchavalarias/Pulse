@@ -93,10 +93,8 @@ for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){
                 
         ';
     }else{
-        echo '
-          
-
-            var bal=R.ball(x1_'.$i.',y1_'.$i.', r, 0.5);                
+        echo '         
+            var bal=R.ball(x1_'.$i.',y1_'.$i.', r, 0.5);                                    
             var t_'.$i.' = R.text(x1_'.$i.','.$ytrans.'-10, "'.$phylo_structure['label'][$i].'");           
             t_'.$i.'.attr({"text-anchor":"start","font-size":20});        
             t_'.$i.'.hide();
@@ -194,6 +192,7 @@ function create_phylo_structure($partition_id) {
             $phylo['length_to_start'][] = 0;
             
             $phylo['exit'][] = 0; // marqueur utile pour la suite pour voir s'il le noeud doit encore être traité dans la spatialisation
+            
             // on récupère pères et fils            
             $resultat_sons = mysql_query("SELECT id_cluster_2_univ FROM `phylo` WHERE id_cluster_1_univ=" . $ligne['id_cluster_univ']) or die("fils non récupérés.");
             $resultat_fathers = mysql_query("SELECT id_cluster_1_univ FROM `phylo` WHERE id_cluster_2_univ=" . $ligne['id_cluster_univ']) or die("fils non récupérés.");
@@ -331,8 +330,11 @@ function create_phylo_structure($partition_id) {
             $M=max($phylo['exit']);
             $periodRank=array_keys($period_uniques,$phylo['period1'][$next_nodes]);
 
-            $current_sons = $phylo['sons'][$next_nodes];                     
-            $end_reached=1;
+            $current_sons = $phylo['sons'][$next_nodes];    
+            
+            if ($direction==0){
+                $end_reached=1;
+            }
                          
             foreach ($current_sons as $value) {
                 $index=array_search($value, $phylo['cluster_id']);
@@ -358,7 +360,11 @@ function create_phylo_structure($partition_id) {
             
             
             $current_fathers = $phylo['fathers'][$next_nodes];                                  
-            $end_reached=1;
+            
+            if ($direction==1){
+                $end_reached=1;
+            }
+            
             
             
             foreach ($current_fathers as $value) {
@@ -394,6 +400,7 @@ function create_phylo_structure($partition_id) {
             $phylo['y'][$next_nodes] = $y_axis[$phylo['period1'][$next_nodes]];
             $clusters_processed[$next_nodes] = 1;
             $counter+=1;
+            $phylo['counter'][$next_nodes]=$counter;
             $phylo['exit'][$next_nodes] = 0;
 
         } else {
