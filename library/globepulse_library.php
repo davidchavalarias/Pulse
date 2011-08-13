@@ -1,11 +1,32 @@
 <?php
 ////////////////  Fonctions
-function phylo_plot($phylo_structure,$ytrans,$timespan,$period_min,$branch_width){
+function phylo_plot($phylo_structure,$ytrans,$timespan,$period_min,$branch_width,$database,$screen_width){
+
+  try
+  {
+    //open the database
+    $db = new PDO('sqlite:positions.sqlite');
+
+    //create the database
+    $db->exec("CREATE TABLE positions (cluster_univ_id TEXT, x_pos_phylo NUMERIC,y_pos_phylo NUMERIC)");    
+
     
+  }
+  catch(PDOException $e)
+  {
+    print 'Exception : '.$e->getMessage();
+  }
+
+
 // on écrit toutes les coordonnées des points
 for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){    
-        echo 'var x_'.$phylo_structure['cluster_id'][$i].'='.($phylo_structure['x'][$i]-$period_min)*1/$timespan.'*(x-60)+40, y_'.$phylo_structure['cluster_id'][$i].'='.$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).';
+        echo 'var x_'.$phylo_structure['cluster_id'][$i].'='.($phylo_structure['x'][$i]-$period_min)*1/$timespan.'*('.$screen_width.'-60)+40, y_'.$phylo_structure['cluster_id'][$i].'='.$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).';
             ';        
+        
+        // calcul du nombre de clusters (à optimiser)
+        $nbClusters=0;        
+        $sql = "INSERT INTO positions(cluster_univ_id,x_pos_phylo,y_pos_phylo) VALUES ('".$phylo_structure['cluster_id'][$i]."',".($phylo_structure['x'][$i]-$period_min)*1/$timespan."*(".$screen_width."-60)+40,".$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).")";      
+        $db->exec($sql);
         
         
 }
