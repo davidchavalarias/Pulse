@@ -1,5 +1,7 @@
 <?php
 // Calcul les coordonnées des cluster en x,y pour tous les streams et les mets en base.
+// donne une représentation des streams avec Raphael
+
 
 include("library/fonctions_php.php");
 include("library/globepulse_library.php");
@@ -7,16 +9,11 @@ include("parametre.php");
 $raphael=TRUE;
 include("include/header.php");
 
-$sqlite_database='alimsec_Africa.db';
 
+
+
+//////// pré calculs ////////
 $dbh = new PDO("sqlite:".$sqlite_database);    
-    // calcul du nombre de clusters (à optimiser)
-    $nbClusters=0;
-    $sql = "SELECT * FROM clusters GROUP BY cluster_id AND period";;
-    foreach ($dbh->query($sql) as $row)
-        {
-        $nbClusters+=1;
-        }
 
 $stream_size=array();
 $sql = "SELECT stream_id,count(*) FROM clusters GROUP BY stream_id";;
@@ -39,22 +36,15 @@ $sql = "SELECT period FROM clusters";;
         $all_period2[]=$per[1];
         }
 
-
-$sqlite_database='alimsec_Africa.db';
-//$sqlite_database='secalim_query_secalimandco.db';
-
+$dbh=NULL;
 
 // données de périodes
 
-$period_uniques = array_unique($phylo_structure['period1']);
 $timespan=max($all_period2)-min($all_period1);    
 $period_min=min($all_period1);
 $ytrans=0; // espace pour les noms de station
 $raphael_height=200;
-$branch_width=40;// espace entre les branches 
-$screen_width=1000;
 $total_nb_nodes=0;
-
 
 //$phylo_structure=create_phylo_structure(1,$sqlite_database);    // importe la branche et calcule la spatialisation    
 
@@ -88,7 +78,7 @@ echo '
             ';
 
 for ($k=0;$k<count($stream_id);$k++){
-    $phylo_structure=create_phylo_structure($stream_id[$k],$sqlite_database);    // importe la branche et calcule la spatialisation    
+    $phylo_structure=create_phylo_structure($stream_id[$k],$sqlite_database);    // importe la branche et calcule la spatialisation        
     phylo_plot($phylo_structure,$ytrans,$timespan,$period_min,$branch_width,$sqlite_database,$screen_width);    // génère le code raphael    
     $ytrans=$trans+(2+max($phylo_structure['y']))*$branch_width;
 }

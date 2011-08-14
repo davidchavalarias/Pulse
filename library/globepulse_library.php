@@ -5,7 +5,7 @@ function phylo_plot($phylo_structure,$ytrans,$timespan,$period_min,$branch_width
   try
   {
     //open the database
-    $db = new PDO('sqlite:positions.sqlite');
+    $db = new PDO('sqlite:'.$database);
 
     //create the database
     $db->exec("CREATE TABLE positions (cluster_univ_id TEXT, x_pos_phylo NUMERIC,y_pos_phylo NUMERIC)");    
@@ -20,7 +20,8 @@ function phylo_plot($phylo_structure,$ytrans,$timespan,$period_min,$branch_width
 
 // on écrit toutes les coordonnées des points
 for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){    
-        echo 'var x_'.$phylo_structure['cluster_id'][$i].'='.($phylo_structure['x'][$i]-$period_min)*1/$timespan.'*('.$screen_width.'-60)+40, y_'.$phylo_structure['cluster_id'][$i].'='.$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).';
+        echo 'var x_'.$phylo_structure['cluster_id'][$i].'='.map($phylo_structure['x'][$i],$period_min,($period_min+$timespan),40,($screen_width-40)).';';
+        echo 'var y_'.$phylo_structure['cluster_id'][$i].'='.$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).';
             ';        
         
         // calcul du nombre de clusters (à optimiser)
@@ -60,7 +61,7 @@ for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){
         
             echo 'c_'.$phylo_structure['cluster_id'][$i].'.mouseover(function (event) {t_'.$phylo_structure['cluster_id'][$i].'.show();'.$showlinks.'});
             c_'.$phylo_structure['cluster_id'][$i].'.mouseout(function (event) {t_'.$phylo_structure['cluster_id'][$i].'.hide();});
-            c_'.$phylo_structure['cluster_id'][$i].'.click(function (event) {window.open("globepulse.php?id_cluster='.$phylo_structure['cluster_id_local'][$i].'&periode='.$phylo_structure['period1'][$i].'-'.$phylo_structure['period2'][$i].'","_self");});               
+            c_'.$phylo_structure['cluster_id'][$i].'.click(function (event) {window.open("phylobranch.php?stream_id='.$phylo_structure['stream_id'].'&id_cluster='.$phylo_structure['local_id'][$i].'&periode='.$phylo_structure['period1'][$i].'-'.$phylo_structure['period2'][$i].'","_self");});               
         ';    
 };
       
@@ -69,11 +70,13 @@ for ($i=0;$i<count($phylo_structure['cluster_id']);$i++){
 function create_phylo_structure($partition_id,$database) {
         
     //Pour fabriquation de phylo avec Raphael. 
-    //créer une structure de type multi_array décrivant une macro-branch de phylogénie avec les champs suivants
-    // cluster_ids,period, length_to_end (distance restant sur la sous chaine),length_from_start (distance parcourue depuis le début),fathers,sons 
+    //crée une structure de type multi_array décrivant une macro-branch de phylogénie avec les champs suivants
+    // cluster_ids (identifiant unique d'un cluster),period1,period2, 
+    // length_to_end (distance restant sur la sous chaine),length_from_start (distance parcourue depuis le début),fathers,sons     
+    // x est la période et y est calculé de façon a optimiser le nombre de sous branches rectilignes et minimiser 
+    
     // on sélectionne tous les clusters
-    // X et Y donnent les dimensions de la feuilles sur laquelle est tracée la phylo
-    // $yfloor donne les coordonnées y minimales pour calculer les coord des noeuds
+
     $dbh = new PDO("sqlite:".$database);    
     // calcul du nombre de clusters (à optimiser)
     $nbClusters=0;
@@ -81,10 +84,10 @@ function create_phylo_structure($partition_id,$database) {
     foreach ($dbh->query($sql) as $row)
         {
         $nbClusters+=1;
-        }
-        
+        }        
     
     $phylo = array();
+    $phylo['stream_id']=$partition_id;
     $listed_clusters=array();
     $count=0;   
     
@@ -345,6 +348,7 @@ function create_phylo_structure($partition_id,$database) {
         }        
 
     }
+    $dbh=NULL;
     return $phylo;
 }
 
@@ -383,6 +387,7 @@ function array_search_filtered($array, $dim_filter, $dim_filter_val, $target_dim
     }else{
         $result = array_keys($array_filtered, min($array_filtered));        
     }
+        
     return $result;
 }
 
@@ -401,5 +406,13 @@ function array_search_filtered_sup($array, $dim_filter, $dim_filter_val, $target
     return $result;
 }
 
-
+function map($x,$xmin,$xmax,$X,$Y){
+    // normalise $x entre $X et $Y sachant que les valeurs parcourent $xmin,$xmax   
+    if ($xmax==$xmin){
+        return 40;
+    }else{
+        return $X+($x-$xmin)/($xmax-$xmin)*($Y-$X);
+    }
+    
+}    
 ?>
