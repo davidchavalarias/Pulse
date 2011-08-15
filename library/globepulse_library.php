@@ -18,12 +18,13 @@ function phylo_plot($phylo_structure,$ytrans,$timespan,$period_min,$branch_width
   }
 
 
+    
 // on écrit toutes les coordonnées des points
 for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){    
-        echo 'var x_'.$phylo_structure['cluster_univ_id'][$i].'='.map($phylo_structure['x'][$i],$period_min,($period_min+$timespan),40,($screen_width-40)).';';
-        echo 'var y_'.$phylo_structure['cluster_univ_id'][$i].'='.$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).';
-            ';        
-        
+     echo 'var x_'.$phylo_structure['cluster_univ_id'][$i].'='.map($phylo_structure['x'][$i],$period_min,($period_min+$timespan),40,($screen_width-40)).';';
+     echo 'var y_'.$phylo_structure['cluster_univ_id'][$i].'='.$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).';
+            ';      
+      
         // calcul du nombre de clusters (à optimiser)
         $nbClusters=0;        
         $sql = "INSERT INTO positions(cluster_univ_id,x_pos_phylo,y_pos_phylo) VALUES ('".$phylo_structure['cluster_univ_id'][$i]."',".($phylo_structure['x'][$i]-$period_min)*1/$timespan."*(".$screen_width."-60)+40,".$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).")";      
@@ -47,12 +48,16 @@ for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){
 
 // on trace les balles
 for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){    
-        //var t2_'.$i.' = R.text(x_'.$i.',y_'.$i.',"'.$phylo_structure['counter'][$i].'-'.$phylo_structure['length_to_start'][$i].'");           
+        //var t2_'.$i.' = R.text(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].',"'.$phylo_structure['counter'][$i].'-'.$phylo_structure['length_to_end'][$i].'");           
         //t2_'.$i.'.attr({"text-anchor":"start","font-size":20});        
+    //var t2_'.$i.' = R.text(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].',"'.$phylo_structure['cluster_univ_id'][$i].'-'.$phylo_structure['stream_id'].'");           
+            //t2_'.$i.'.attr({"text-anchor":"start","font-size":20});        
             
         echo '         
             var bal_'.$phylo_structure['cluster_univ_id'][$i].'=R.ball(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', r, 0.5);                                    
             var t_'.$phylo_structure['cluster_univ_id'][$i].' = R.text(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].'-20, "'.$phylo_structure['label'][$i].'");                           
+        
+        
             t_'.$phylo_structure['cluster_univ_id'][$i].'.attr({"text-anchor":"center","font-size":20});        
             t_'.$phylo_structure['cluster_univ_id'][$i].'.hide();
             var c_'.$phylo_structure['cluster_univ_id'][$i].'=R.circle((x_'.$phylo_structure['cluster_univ_id'][$i].'),y_'.$phylo_structure['cluster_univ_id'][$i].', 1.5*r).attr({fill: "red",opacity:0});';
@@ -115,9 +120,11 @@ function create_phylo_structure($partition_id,$database) {
             $phylo['count'][] = 0; // pour le debugg
             
             // on récupère pères et fils       
-            $sql_sons="SELECT current_cluster_univ_id FROM `phylogeny` WHERE previous_cluster_univ_id=" . $ligne['cluster_univ_id'].'"';
-            $sql_fathers="SELECT previous_cluster_univ_id FROM `phylogeny` WHERE current_cluster_univ_id=" . $ligne['cluster_univ_id'].'"';
+            $sql_sons="SELECT current_cluster_univ_id FROM `phylogeny` WHERE previous_cluster_univ_id='" . $ligne['cluster_univ_id']."'";
+            $sql_fathers="SELECT previous_cluster_univ_id FROM `phylogeny` WHERE current_cluster_univ_id='" . $ligne['cluster_univ_id']."'";
                      
+      
+            
             $sons = array();
             $fathers = array();
             
@@ -142,9 +149,9 @@ function create_phylo_structure($partition_id,$database) {
     
     $period_uniques = $phylo['period1'];
     
-    $period_uniques_reverse=array_unique($period_uniques);// périodes par ordre décroissant
+    $period_uniques=array_unique($period_uniques);// périodes par ordre décroissant
     sort($period_uniques);
-    $period_uniques=array_reverse($period_uniques); 
+    $period_uniques_reverse=array_reverse($period_uniques); 
     ///$nb_periodes=$period_uniques[-1]-$period_uniques[0];   
     
     $clusters_processed = array();
@@ -168,8 +175,10 @@ function create_phylo_structure($partition_id,$database) {
     }unset($current_period);
 
     // On calcule pour chaque cluster sa distance au début sa branche 
+    
     foreach ($period_uniques as $current_period) {
         $clusters_rank = array_keys($phylo['period1'], $current_period);
+        
         foreach ($clusters_rank as $cluster_rank) {
             $length_to_start = 0;
             if (!empty($phylo['fathers'][$cluster_rank])) {
@@ -406,6 +415,7 @@ function array_search_filtered_sup($array, $dim_filter, $dim_filter_val, $target
 
 function map($x,$xmin,$xmax,$X,$Y){
     // normalise $x entre $X et $Y sachant que les valeurs parcourent $xmin,$xmax   
+    
     if ($xmax==$xmin){
         return 40;
     }else{
