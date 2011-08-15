@@ -2,34 +2,33 @@
 ////////////////  Fonctions
 function phylo_plot($phylo_structure,$ytrans,$timespan,$period_min,$branch_width,$database,$screen_width){
 
-  try
-  {
-    //open the database
+    if(isset( $_GET['id_cluster'])){
+        $id_cluster = intval($_GET['id_cluster']); }
+        else{
+            $id_cluster =-1;
+    }
+    
+    if(isset( $_GET['store'])) {
+        $store=$_GET['store'];         
+    }else{
+        $store=0;
+    }
+ 
+    if ($store==1){
     $db = new PDO('sqlite:'.$database);
-
     //create the database
     $db->exec("CREATE TABLE positions (cluster_univ_id TEXT, x_pos_phylo NUMERIC,y_pos_phylo NUMERIC)");    
-
-    
-  }
-  catch(PDOException $e)
-  {
-    print 'Exception : '.$e->getMessage();
-  }
-
-
+    }
     
 // on écrit toutes les coordonnées des points
 for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){    
      echo 'var x_'.$phylo_structure['cluster_univ_id'][$i].'='.map($phylo_structure['x'][$i],$period_min,($period_min+$timespan),40,($screen_width-40)).';';
      echo 'var y_'.$phylo_structure['cluster_univ_id'][$i].'='.$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).';
             ';      
-      
-        // calcul du nombre de clusters (à optimiser)
-        $nbClusters=0;        
+     if ($store==1){     
         $sql = "INSERT INTO positions(cluster_univ_id,x_pos_phylo,y_pos_phylo) VALUES ('".$phylo_structure['cluster_univ_id'][$i]."',".($phylo_structure['x'][$i]-$period_min)*1/$timespan."*(".$screen_width."-60)+40,".$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).")";      
         $db->exec($sql);
-        
+     }
         
 }
 
@@ -53,6 +52,20 @@ for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){
     //var t2_'.$i.' = R.text(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].',"'.$phylo_structure['cluster_univ_id'][$i].'-'.$phylo_structure['stream_id'].'");           
             //t2_'.$i.'.attr({"text-anchor":"start","font-size":20});        
             
+    if ($id_cluster==$phylo_structure['cluster_univ_id'][$i]){      
+    echo '
+            R.circle(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', 2*r);
+            var t = R.text(50,10,"'.$phylo_structure['label'][$i].'");
+            var twidth = t.getBBox().width; 
+            var trans=twidth*Math.cos(Math.pi-10);
+            t.attr({ "text-anchor":"start","font-size":22,"font-weight":"bold","fill":"grey"});        
+            var bal=R.ball(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', r, 0)                          
+                .click(function (event) {window.open("phylobranch.php?stream_id='.$phylo_structure['stream_id'].'&id_cluster='.$phylo_structure['cluster_univ_id'][$i].'&periode='.$phylo_structure['period1'][$i].'-'.$phylo_structure['period2'][$i].'","_self");});     
+                
+        ';
+    }else{
+    
+    
         echo '         
             var bal_'.$phylo_structure['cluster_univ_id'][$i].'=R.ball(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', r, 0.5);                                    
             var t_'.$phylo_structure['cluster_univ_id'][$i].' = R.text(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].'-20, "'.$phylo_structure['label'][$i].'");                           
@@ -66,8 +79,9 @@ for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){
         
             echo 'c_'.$phylo_structure['cluster_univ_id'][$i].'.mouseover(function (event) {t_'.$phylo_structure['cluster_univ_id'][$i].'.show();'.$showlinks.'});
             c_'.$phylo_structure['cluster_univ_id'][$i].'.mouseout(function (event) {t_'.$phylo_structure['cluster_univ_id'][$i].'.hide();});
-            c_'.$phylo_structure['cluster_univ_id'][$i].'.click(function (event) {window.open("phylobranch.php?stream_id='.$phylo_structure['stream_id'].'&id_cluster='.$phylo_structure['local_id'][$i].'&periode='.$phylo_structure['period1'][$i].'-'.$phylo_structure['period2'][$i].'","_self");});               
+            c_'.$phylo_structure['cluster_univ_id'][$i].'.click(function (event) {window.open("phylobranch.php?stream_id='.$phylo_structure['stream_id'].'&id_cluster='.$phylo_structure['cluster_univ_id'][$i].'&periode='.$phylo_structure['period1'][$i].'-'.$phylo_structure['period2'][$i].'","_self");});               
         ';    
+    }
 };
       
 }
