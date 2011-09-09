@@ -17,7 +17,7 @@ function phylo_plot($phylo_structure,$ytrans,$timespan,$period_min,$branch_width
     if ($store==1){
     $db = new PDO('sqlite:'.$database);
     //create the database
-    $db->exec("CREATE TABLE positions (cluster_univ_id TEXT, x_pos_phylo NUMERIC,y_pos_phylo NUMERIC)");    
+    $db->exec("CREATE TABLE positions (cluster_univ_id TEXT, pos_x_phylo NUMERIC,pos_y_phylo NUMERIC)");    
     }
     
 // on écrit toutes les coordonnées des points
@@ -26,7 +26,7 @@ for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){
      echo 'var y_'.$phylo_structure['cluster_univ_id'][$i].'='.$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).';
             ';      
      if ($store==1){     
-        $sql = "INSERT INTO positions(cluster_univ_id,x_pos_phylo,y_pos_phylo) VALUES ('".$phylo_structure['cluster_univ_id'][$i]."',".($phylo_structure['x'][$i]-$period_min)*1/$timespan."*(".$screen_width."-60)+40,".$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).")";      
+        $sql = "INSERT INTO positions(cluster_univ_id,pos_x_phylo,pos_y_phylo) VALUES ('".$phylo_structure['cluster_univ_id'][$i]."',".($phylo_structure['x'][$i]-$period_min)*1/$timespan."*(".$screen_width."-60)+40,".$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).")";      
         $db->exec($sql);
      }
         
@@ -46,6 +46,8 @@ for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){
 
 
 // on trace les balles
+$hue= ($phylo_structure['stream_id'] % 15)/15 ;
+
 for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){    
         //var t2_'.$i.' = R.text(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].',"'.$phylo_structure['counter'][$i].'-'.$phylo_structure['length_to_end'][$i].'");           
         //t2_'.$i.'.attr({"text-anchor":"start","font-size":20});        
@@ -55,7 +57,7 @@ for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){
     if ($id_cluster==$phylo_structure['cluster_univ_id'][$i]){      
     echo '
             R.circle(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', 2*r);
-            var t = R.text(50,10,"'.$phylo_structure['label'][$i].'");
+            var t = R.text(50,10,"'.$phylo_structure['label'][$i].'-'.$phylo_structure['cluster_univ_id'][$i].'");
             var twidth = t.getBBox().width; 
             var trans=twidth*Math.cos(Math.pi-10);
             t.attr({ "text-anchor":"start","font-size":22,"font-weight":"bold","fill":"grey"});        
@@ -67,10 +69,10 @@ for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){
     
     
         echo '         
-            var bal_'.$phylo_structure['cluster_univ_id'][$i].'=R.ball(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', r, 0.5);                                    
+            var bal_'.$phylo_structure['cluster_univ_id'][$i].'=R.ball(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', r, '.$hue.');                                    
             var t_'.$phylo_structure['cluster_univ_id'][$i].' = R.text(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].'-20, "'.$phylo_structure['label'][$i].'");                           
         
-        
+
             t_'.$phylo_structure['cluster_univ_id'][$i].'.attr({"text-anchor":"center","font-size":20});        
             t_'.$phylo_structure['cluster_univ_id'][$i].'.hide();
             var c_'.$phylo_structure['cluster_univ_id'][$i].'=R.circle((x_'.$phylo_structure['cluster_univ_id'][$i].'),y_'.$phylo_structure['cluster_univ_id'][$i].', 1.5*r).attr({fill: "red",opacity:0});';
@@ -98,12 +100,12 @@ function create_phylo_structure($partition_id,$database) {
 
     $dbh = new PDO("sqlite:".$database);    
     // calcul du nombre de clusters (à optimiser)
-    $nbClusters=0;
-    $sql = "SELECT * FROM clusters WHERE stream_id=". $partition_id." GROUP BY cluster_id,period";;
-    foreach ($dbh->query($sql) as $row)
-        {
-        $nbClusters+=1;
-        }        
+//    $nbClusters=0;
+//    $sql = "SELECT * FROM clusters WHERE stream_id=". $partition_id." GROUP BY cluster_id,period";;
+//    foreach ($dbh->query($sql) as $row)
+//        {
+//        $nbClusters+=1;
+//        }        
     
     $phylo = array();
     $phylo['stream_id']=$partition_id;
