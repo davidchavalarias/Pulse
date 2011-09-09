@@ -39,24 +39,27 @@ foreach ($stream_id as $stream){
         }
     usort($periods, "cmp");
     
+    pta($periods);
+    
     foreach ($periods as $period) {
-     pt('period '.$period);   
+       
     // pour chaque période on sélectionne le cluster
-        $sql = "SELECT cluster_univ_id FROM clusters where stream_id=" . $stream . " and period=" . $period . " group by cluster_univ_id";        
+        $sql = "SELECT cluster_univ_id FROM clusters where stream_id=" . $stream . " and period='" . $period . "' group by cluster_univ_id";        
         foreach ($dbh->query($sql) as $cluster) {
             // pour chaque cluster on fait la liste des articles
             $paper_list=array();
               $sql_paper_list = "SELECT article_id, weight FROM projection where cluster_univ_id=" .$cluster['cluster_univ_id'];
               foreach ($dbh->query($sql_paper_list) as $paper) {
-                  $paper_list($paper['article_id'])=$paper_list($paper['weight']);
+                  $paper_list[$paper['article_id']]=$paper['weight'];
               }
               $best_paper_id=array_search(max($paper_list), $paper_list);
               $sql_best_paper = "SELECT data FROM headline where id=" .$best_paper_id;
               foreach ($dbh->query($sql_best_paper) as $best_paper) {
-                  pt($best_paper['data']);
+                  pt($period.' - '.$best_paper['data']);
               }
               
         }
+        
     }
     
     $sql = "SELECT cluster_univ_id FROM clusters where stream_id=".$stream;;
