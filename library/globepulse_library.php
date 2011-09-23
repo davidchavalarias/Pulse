@@ -1,7 +1,11 @@
 <?php
-////////////////  Fonctions
-function phylo_plot($phylo_structure,$ytrans,$timespan,$period_min,$branch_width,$database,$screen_width){
 
+////////////////  Fonctions
+function phylo_plot($phylo_structure,$ytrans,$timespan,$period_min,$branch_width,$database,$screen_width,$r){
+    
+    $db = new PDO('sqlite:'.$database);
+     
+    
     if(isset( $_GET['id_cluster'])){
         $id_cluster = intval($_GET['id_cluster']); }
         else{
@@ -21,7 +25,7 @@ function phylo_plot($phylo_structure,$ytrans,$timespan,$period_min,$branch_width
     }
     
 // on écrit toutes les coordonnées des points
-for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){    
+for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){      
      echo 'var x_'.$phylo_structure['cluster_univ_id'][$i].'='.map($phylo_structure['x'][$i],$period_min,($period_min+$timespan),40,($screen_width-40)).';';
      echo 'var y_'.$phylo_structure['cluster_univ_id'][$i].'='.$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).';
             ';      
@@ -47,17 +51,34 @@ for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){
 
 // on trace les balles
 $hue= ($phylo_structure['stream_id'] % 15)/15 ;
+$bottom=$branch_width*(1+max($phylo_structure['y'])); // Bas de la page
 
 for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){    
-        //var t2_'.$i.' = R.text(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].',"'.$phylo_structure['counter'][$i].'-'.$phylo_structure['length_to_end'][$i].'");           
-        //t2_'.$i.'.attr({"text-anchor":"start","font-size":20});        
-    //var t2_'.$i.' = R.text(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].',"'.$phylo_structure['cluster_univ_id'][$i].'-'.$phylo_structure['stream_id'].'");           
-            //t2_'.$i.'.attr({"text-anchor":"start","font-size":20});        
-            
-    if ($id_cluster==$phylo_structure['cluster_univ_id'][$i]){      
+
+                
+    if ($id_cluster==$phylo_structure['cluster_univ_id'][$i]){    
+        
+        // on prépare le détail de chaque cluster
+     
+     $sql="SELECT term,weight FROM clusters WHERE cluster_univ_id=". $phylo_structure['cluster_univ_id'][$i];
+     $term='';
+     
+     $terms=array(); // terms avec leurs poids
+     foreach ($db->query($sql) as $ligne){   
+        $terms[$ligne['term']]=$ligne['weight'];             
+     }
+     
+     $meanweight=array_sum($terms)/count($terms);
+     // on prépare la liste des termes avec retour à la ligne
+     $term=block($terms,100,$meanweight);
+             
+
+        
+        
+        
     echo '
-            R.circle(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', 2*r);
-            var t = R.text(50,10,"'.$phylo_structure['label'][$i].'-'.$phylo_structure['cluster_univ_id'][$i].'");
+            R.circle(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', 2*'.$r.');
+            var t = R.text(50,10,"'.$phylo_structure['label'][$i].' - '.$phylo_structure['cluster_univ_id'][$i].'");                
             var twidth = t.getBBox().width; 
             var trans=twidth*Math.cos(Math.pi-10);
             t.attr({ "text-anchor":"start","font-size":22,"font-weight":"bold","fill":"grey"});        
@@ -65,17 +86,23 @@ for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){
                 .click(function (event) {window.open("phylobranch.php?stream_id='.$phylo_structure['stream_id'].'&id_cluster='.$phylo_structure['cluster_univ_id'][$i].'&periode='.$phylo_structure['period1'][$i].'-'.$phylo_structure['period2'][$i].'","_self");});     
                 
         ';
+    // on affiche les infos complémentaires
+    echo ' var detail = R.text('.($screen_width-40).','.($bottom+80).',"'.$term.'");  
+        detail.attr({ "text-anchor":"end","font-size":12,"font-weight":"bold","fill":"grey"});
+        ';
+    
+    
     }else{
     
     
         echo '         
-            var bal_'.$phylo_structure['cluster_univ_id'][$i].'=R.ball(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', r, '.$hue.');                                    
+            var bal_'.$phylo_structure['cluster_univ_id'][$i].'=R.ball(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', '.$r.', '.$hue.');                                    
             var t_'.$phylo_structure['cluster_univ_id'][$i].' = R.text(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].'-20, "'.$phylo_structure['label'][$i].'");                           
         
 
             t_'.$phylo_structure['cluster_univ_id'][$i].'.attr({"text-anchor":"center","font-size":20});        
             t_'.$phylo_structure['cluster_univ_id'][$i].'.hide();
-            var c_'.$phylo_structure['cluster_univ_id'][$i].'=R.circle((x_'.$phylo_structure['cluster_univ_id'][$i].'),y_'.$phylo_structure['cluster_univ_id'][$i].', 1.5*r).attr({fill: "red",opacity:0});';
+            var c_'.$phylo_structure['cluster_univ_id'][$i].'=R.circle((x_'.$phylo_structure['cluster_univ_id'][$i].'),y_'.$phylo_structure['cluster_univ_id'][$i].', 1.5*'.$r.').attr({fill: "red",opacity:0});';
         
             
         
@@ -85,6 +112,8 @@ for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){
         ';    
     }
 };
+
+return $terms;
       
 }
 
@@ -439,4 +468,29 @@ function map($x,$xmin,$xmax,$X,$Y){
     }
     
 }    
+
+function block($terms,$length,$min_weight){
+    // concatène les élément string d'un array terms[poids] en un bloc de texte de taille max length
+         $termstemp = '';
+            foreach ($terms as $key => $value) {
+                if ($value > $min_weight) {
+                    $items = split(' ', $key);
+                    for ($i=0; $i<(count($items)-1);$i++) {
+                        if (strlen($termstemp) > $length) {
+                            $term.='\n';
+                            $termstemp = '';
+                        }
+                        $term.=trim($items[$i]). ' ';
+                        $termstemp.=trim($items[$i]). ' ';                        
+                    }                    
+                    $term.=trim($items[count($items)-1]).', ';
+                    $termstemp .=trim($items[count($items)-1]).', ';
+                    if (strlen($termstemp) > $length) {
+                            $term.='\n';
+                            $termstemp = '';
+                    }
+                }
+            }
+            return substr(trim($term),0,-2).'.';
+}
 ?>

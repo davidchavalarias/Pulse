@@ -38,9 +38,7 @@ foreach ($stream_id as $stream){
         $periods[]=$row['period'];
         }
     usort($periods, "cmp");
-    
-    pta($periods);
-    
+
     foreach ($periods as $period) {
        
     // pour chaque période on sélectionne le cluster
@@ -52,10 +50,15 @@ foreach ($stream_id as $stream){
               foreach ($dbh->query($sql_paper_list) as $paper) {
                   $paper_list[$paper['article_id']]=$paper['weight'];
               }
+              
               $best_paper_id=array_search(max($paper_list), $paper_list);
               $sql_best_paper = "SELECT data FROM headline where id=" .$best_paper_id;
               foreach ($dbh->query($sql_best_paper) as $best_paper) {
-                  pt($period.' - '.$best_paper['data']);
+                  $sql_best_paper_source = "SELECT data FROM sourceName where id=" .$best_paper_id;
+                  foreach ($dbh->query($sql_best_paper_source) as $source) {
+                      
+                      pt($period.' - '.$best_paper['data'].' ('.$source['data'].')');
+                  }                                
               }
               
         }
@@ -67,7 +70,7 @@ foreach ($stream_id as $stream){
         {       
         //$stream_size[$row['0']]=$row['1'];
         }
-    
+    pt('---------------------------');
 }
 
 
