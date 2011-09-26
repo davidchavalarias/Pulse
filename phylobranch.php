@@ -133,11 +133,52 @@ foreach ($conn->query($sql_best_paper) as $best_paper) {
             foreach ($conn->query($sql_best_paper_date) as $Pubdate) {
                 pt('<p style="text-align: justify"><b>' . $period . '  <font size="3" face="arial">' . $best_paper['data'] .
                         ' </b><i>' . $source['data'] . '</i> <font size="1" face="arial">' . $Pubdate['data'] . '</font>' . '</font>' . '<br/><font size="2" face="arial" color="grey">'
-                        . $paragraph['data'] . '</font></p>');
+                        . $paragraph['data'] . '</font><br/>');
             }
         }
     }
 }
+
+// et un article par meilleurs score JP
+foreach ($conn->query($sql) as $cluster) {
+    // pour chaque cluster on fait la liste des articles
+    $paper_list = array();
+    $sql_paper_list = "SELECT article_id, weight FROM projection where cluster_univ_id=" . $id_cluster;
+    foreach ($conn->query($sql_paper_list) as $paper) {
+        $paper_list[$paper['article_id']] = $paper['weight'];
+    }
+
+    $best_paper_id = array_search(max($paper_list), $paper_list);
+    $sql_best_paper = "SELECT data FROM headline where id=" . $best_paper_id;
+    foreach ($conn->query($sql_best_paper) as $best_paper) {
+        $sql_best_paper_source = "SELECT data FROM sourceName where id=" . $best_paper_id;
+        foreach ($conn->query($sql_best_paper_source) as $source) {
+            $sql_best_paper_tail = "SELECT data FROM leadParagraph where id=" . $best_paper_id;
+            foreach ($conn->query($sql_best_paper_tail) as $paragraph) {
+                $sql_best_paper_date = "SELECT data FROM publicationDate where id=" . $best_paper_id;
+                foreach ($conn->query($sql_best_paper_date) as $Pubdate) {
+                    $sql_best_paper_date = "SELECT data FROM ISIterms where id=" . $best_paper_id;
+                        //$isilist=array();
+                        //foreach ($conn->query($sql_best_paper_date) as $isiterms) {
+//                        $isilist[$isiterms['data']]=1;                                                            
+//                        }
+//                        $isikeywords='';
+//                        $isiterms=array_keys($isilist);
+//                        foreach($isiterms as $isiterm){
+//                            $isikeywords.=$isiterm.', ';
+//                        }
+                    //<font size="2" face="arial"<i>'.$isikeywords.'</i></font>
+                            
+                        pt('<b>' . $period . '  <font size="3" face="arial">' . $best_paper['data'] .
+                            ' </b><i>' . $source['data'] . '</i> <font size="1" face="arial">' . $Pubdate['data'] . '</font>' . '</font>' . '<br/>                            
+                            <font size="2" face="arial" color="grey">'
+                            . $paragraph['data'] . '</font></p>');
+                }
+            }
+        }
+    }
+   }
+          
     
 
 

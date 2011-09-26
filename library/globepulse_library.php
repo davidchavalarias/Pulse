@@ -60,14 +60,14 @@ for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){
         
         // on prépare le détail de chaque cluster
      
-     $sql="SELECT term,weight FROM clusters WHERE cluster_univ_id=". $phylo_structure['cluster_univ_id'][$i];
+     $sql="SELECT term,weight FROM clusters WHERE cluster_univ_id=". $phylo_structure['cluster_univ_id'][$i].' order by weight';
      $term='';
      
      $terms=array(); // terms avec leurs poids
      foreach ($db->query($sql) as $ligne){   
         $terms[$ligne['term']]=$ligne['weight'];             
      }
-     
+     $terms=array_reverse($terms);
      $meanweight=array_sum($terms)/count($terms);
      // on prépare la liste des termes avec retour à la ligne
      $term=block($terms,80,500);
