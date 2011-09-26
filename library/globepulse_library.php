@@ -1,133 +1,133 @@
 <?php
 
 ////////////////  Fonctions
-function phylo_plot($phylo_structure,$ytrans,$timespan,$period_min,$branch_width,$database,$screen_width,$r){
-    
-    $db = new PDO('sqlite:'.$database);
-     
-    
-    if(isset( $_GET['id_cluster'])){
-        $id_cluster = intval($_GET['id_cluster']); }
-        else{
-            $id_cluster =-1;
+function phylo_plot($phylo_structure, $ytrans, $timespan, $period_min, $branch_width, $database, $screen_width, $r) {
+
+    $db = new PDO('sqlite:' . $database);
+
+   
+
+    if (isset($_GET['id_cluster'])) {
+        $id_cluster = intval($_GET['id_cluster']);
+        $right_margin=40;
+    } else {// on est en train d'afficher toutes les branches
+        $id_cluster = -1;
+        $right_margin = 200;
+        // on extrait le label du stream
+        $sql = "SELECT stream_label FROM clusters WHERE cluster_univ_id=" . $phylo_structure['cluster_univ_id'][0] . ' group by stream_label';
+        foreach ($db->query($sql) as $ligne) {
+            $stream_label = $ligne['stream_label'];
+        }
+        $stream_label = ucfirst(block(split('-', $stream_label), 30, 1000));
+    }
+
+    if (isset($_GET['store'])) {
+        $store = $_GET['store'];
+    } else {
+        $store = 0;
+    }
+
+    if ($store == 1) {// on stocke les coordonnées en base
+        $db = new PDO('sqlite:' . $database);
+        //create the database
+        $db->exec("CREATE TABLE positions (cluster_univ_id TEXT, pos_x_phylo NUMERIC,pos_y_phylo NUMERIC)");
     }
     
-    if(isset( $_GET['store'])) {
-        $store=$_GET['store'];         
-    }else{
-        $store=0;
-    }
- 
-    if ($store==1){
-    $db = new PDO('sqlite:'.$database);
-    //create the database
-    $db->exec("CREATE TABLE positions (cluster_univ_id TEXT, pos_x_phylo NUMERIC,pos_y_phylo NUMERIC)");    
-    }
+    
+
+
+    
+if ($id_cluster==-1){
+//on affiche le label du stream dans la vue globale
+echo 'var streamlabel = R.text('.(10).','.($ytrans+$branch_width).',"' . $stream_label . '");                
+            streamlabel.attr({ "text-anchor":"start","font-size":10,"font-weight":"bold","fill":"grey"});        
+            ';    
+}
     
 // on écrit toutes les coordonnées des points
-for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){      
-     echo 'var x_'.$phylo_structure['cluster_univ_id'][$i].'='.map($phylo_structure['x'][$i],$period_min,($period_min+$timespan),40,($screen_width-40)).';';
-     echo 'var y_'.$phylo_structure['cluster_univ_id'][$i].'='.$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).';
-            ';      
-     if ($store==1){     
-        $sql = "INSERT INTO positions(cluster_univ_id,pos_x_phylo,pos_y_phylo) VALUES ('".$phylo_structure['cluster_univ_id'][$i]."',".($phylo_structure['x'][$i]-$period_min)*1/$timespan."*(".$screen_width."-60)+40,".$ytrans.'+('.$branch_width.')*'.(($phylo_structure['y'][$i]-1)).")";      
-        $db->exec($sql);
-     }
-        
-}
-
+    for ($i = 0; $i < count($phylo_structure['cluster_univ_id']); $i++) {
+        echo 'var x_' . $phylo_structure['cluster_univ_id'][$i] . '=' . map($phylo_structure['x'][$i], $period_min, ($period_min + $timespan), $right_margin, ($screen_width - 40)) . ';';
+        echo 'var y_' . $phylo_structure['cluster_univ_id'][$i] . '=' . $ytrans . '+(' . $branch_width . ')*' . (($phylo_structure['y'][$i] - 1)) . ';
+            ';
+        if ($store == 1) {// on stocke les coordonnées en base
+            $sql = "INSERT INTO positions(cluster_univ_id,pos_x_phylo,pos_y_phylo) VALUES ('" . $phylo_structure['cluster_univ_id'][$i] . "'," . map($phylo_structure['x'][$i], $period_min, ($period_min + $timespan), 40, ($screen_width - 40)) . "," . $branch_width * (($phylo_structure['y'][$i] - 1)) . ")";
+            $db->exec($sql);
+        }
+    }
 
 // on trace les lignes
-for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){
-    foreach ($phylo_structure['sons'][$i] as $value) {
-         $index=array_search($value, $phylo_structure['cluster_univ_id']);
-         echo 'var S_'.$phylo_structure['cluster_univ_id'][$i].'_'.$value.'="M"+(x_'.$phylo_structure['cluster_univ_id'][$i].')+ "," + y_'.$phylo_structure['cluster_univ_id'][$i].' + "C"+(x_'.$phylo_structure['cluster_univ_id'][$i].'+30)+ "," + y_'.$phylo_structure['cluster_univ_id'][$i].'  + " " + (x_'.$value.'-30)+ "," + y_'.$value.'+ " " +(x_'.$value.')+ "," + y_'.$value.";                        
+    for ($i = 0; $i < count($phylo_structure['cluster_univ_id']); $i++) {
+        foreach ($phylo_structure['sons'][$i] as $value) {
+            $index = array_search($value, $phylo_structure['cluster_univ_id']);
+            echo 'var S_' . $phylo_structure['cluster_univ_id'][$i] . '_' . $value . '="M"+(x_' . $phylo_structure['cluster_univ_id'][$i] . ')+ "," + y_' . $phylo_structure['cluster_univ_id'][$i] . ' + "C"+(x_' . $phylo_structure['cluster_univ_id'][$i] . '+30)+ "," + y_' . $phylo_structure['cluster_univ_id'][$i] . '  + " " + (x_' . $value . '-30)+ "," + y_' . $value . '+ " " +(x_' . $value . ')+ "," + y_' . $value . ";                        
             ";
-        
-        echo 'var c'.$phylo_structure['cluster_univ_id'][$i].'_'.$value. '= R.path(S_'.$phylo_structure['cluster_univ_id'][$i].'_'.$value.');';
+
+            echo 'var c' . $phylo_structure['cluster_univ_id'][$i] . '_' . $value . '= R.path(S_' . $phylo_structure['cluster_univ_id'][$i] . '_' . $value . ');';
         }
-};
+    };
 
 
-// on trace les balles
-$hue= ($phylo_structure['stream_id'] % 15)/15 ;
-$bottom=$branch_width*(1+max($phylo_structure['y'])); // Bas de la page
+// on trace les noeuds
+    $hue = ($phylo_structure['stream_id'] % 15) / 15;
+    $bottom = $branch_width * (1 + max($phylo_structure['y'])); // Bas de la page
+    for ($i = 0; $i < count($phylo_structure['cluster_univ_id']); $i++) {
 
-for ($i=0;$i<count($phylo_structure['cluster_univ_id']);$i++){    
+        if ($id_cluster == $phylo_structure['cluster_univ_id'][$i]) {// on est sur le cluster sélectionné                       
+            
+            // on prépare la liste des mots clef du cluster sélectionné pour affichage
+            $sql = "SELECT stream_label,term,weight FROM clusters WHERE cluster_univ_id=" . $phylo_structure['cluster_univ_id'][$i] . ' order by weight';
+            $term = '';
+            $terms = array(); // terms avec leurs poids
+            foreach ($db->query($sql) as $ligne) {
+                $terms[$ligne['term']] = $ligne['weight'];                
+            }
+            $terms = array_reverse($terms);
+            $meanweight = array_sum($terms) / count($terms);
+            // on prépare la liste des termes avec retour à la ligne
+            $term = block(array_keys($terms), 80, 500);
 
-                
-    if ($id_cluster==$phylo_structure['cluster_univ_id'][$i]){    
-        
-        // on prépare le détail de chaque cluster
-     
-     $sql="SELECT term,weight FROM clusters WHERE cluster_univ_id=". $phylo_structure['cluster_univ_id'][$i].' order by weight';
-     $term='';
-     
-     $terms=array(); // terms avec leurs poids
-     foreach ($db->query($sql) as $ligne){   
-        $terms[$ligne['term']]=$ligne['weight'];             
-     }
-     $terms=array_reverse($terms);
-     $meanweight=array_sum($terms)/count($terms);
-     // on prépare la liste des termes avec retour à la ligne
-     $term=block($terms,80,500);
-             
-
-        
-        
-        
-    echo '
-            R.circle(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', 2*'.$r.');
-            var t = R.text(70,14,"'.$phylo_structure['label'][$i].' - '.$phylo_structure['cluster_univ_id'][$i].'");                
+            echo '
+            R.circle(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . ', 2*' . $r . ');
+            var t = R.text(70,14,"' . $phylo_structure['label'][$i] . ' - ' . $phylo_structure['cluster_univ_id'][$i] . '");                
             var twidth = t.getBBox().width; 
             var trans=twidth*Math.cos(Math.pi-10);
             t.attr({ "text-anchor":"start","font-size":22,"font-weight":"bold","fill":"grey"});        
-            var bal=R.ball(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', r, 0)                          
-                .click(function (event) {window.open("phylobranch.php?stream_id='.$phylo_structure['stream_id'].'&id_cluster='.$phylo_structure['cluster_univ_id'][$i].'&periode='.$phylo_structure['period1'][$i].'-'.$phylo_structure['period2'][$i].'","_self");});     
-                
-        ';
-    // on affiche les infos complémentaires
-    echo ' var detail = R.text('.(0+40).','.($bottom+20).',"'.$term.'");  
-        detail.attr({ "text-anchor":"start","font-size":10,"font-weight":"bold","fill":"grey"});
-        ';
-    
-    
-    }else{
-    
-    
-        echo '         
-            var bal_'.$phylo_structure['cluster_univ_id'][$i].'=R.ball(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].', '.$r.', '.$hue.');                                    
-            var t_'.$phylo_structure['cluster_univ_id'][$i].' = R.text(x_'.$phylo_structure['cluster_univ_id'][$i].',y_'.$phylo_structure['cluster_univ_id'][$i].'-15, "'.$phylo_structure['label'][$i].'");                           
-        
+            var bal=R.ball(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . ', r, 0)                          
+                .click(function (event) {window.open("phylobranch.php?stream_id=' . $phylo_structure['stream_id'] . '&id_cluster=' . $phylo_structure['cluster_univ_id'][$i] . '&periode=' . $phylo_structure['period1'][$i] . '-' . $phylo_structure['period2'][$i] . '","_self");});';
 
-            t_'.$phylo_structure['cluster_univ_id'][$i].'.attr({"text-anchor":"center","font-size":15});        
-            t_'.$phylo_structure['cluster_univ_id'][$i].'.hide();
-            var c_'.$phylo_structure['cluster_univ_id'][$i].'=R.circle((x_'.$phylo_structure['cluster_univ_id'][$i].'),y_'.$phylo_structure['cluster_univ_id'][$i].', 1.5*'.$r.').attr({fill: "red",opacity:0});';
+            // on affiche les infos complémentaires
+            echo ' var detail = R.text(' . (0 + 40) . ',' . ($bottom + 20) . ',"' . $term . '");  
+            detail.attr({ "text-anchor":"start","font-size":10,"font-weight":"bold","fill":"grey"});                        
+            ';
+        } else {
+            echo '         
+            var bal_' . $phylo_structure['cluster_univ_id'][$i] . '=R.ball(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . ', ' . $r . ', ' . $hue . ');                                    
+            var t_' . $phylo_structure['cluster_univ_id'][$i] . ' = R.text(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . '-15, "' . $phylo_structure['label'][$i] . '");                           
         
-            
-        
-            echo 'c_'.$phylo_structure['cluster_univ_id'][$i].'.mouseover(function (event) {t_'.$phylo_structure['cluster_univ_id'][$i].'.show();'.$showlinks.'});
-            c_'.$phylo_structure['cluster_univ_id'][$i].'.mouseout(function (event) {t_'.$phylo_structure['cluster_univ_id'][$i].'.hide();});
-            c_'.$phylo_structure['cluster_univ_id'][$i].'.click(function (event) {window.open("phylobranch.php?stream_id='.$phylo_structure['stream_id'].'&id_cluster='.$phylo_structure['cluster_univ_id'][$i].'&periode='.$phylo_structure['period1'][$i].'-'.$phylo_structure['period2'][$i].'","_self");});               
-        ';    
-    }
-};
+            t_' . $phylo_structure['cluster_univ_id'][$i] . '.attr({"text-anchor":"center","font-size":15});        
+            t_' . $phylo_structure['cluster_univ_id'][$i] . '.hide();
+            var c_' . $phylo_structure['cluster_univ_id'][$i] . '=R.circle((x_' . $phylo_structure['cluster_univ_id'][$i] . '),y_' . $phylo_structure['cluster_univ_id'][$i] . ', 1.5*' . $r . ').attr({fill: "red",opacity:0});';
 
-return $terms;
-      
+            echo 'c_' . $phylo_structure['cluster_univ_id'][$i] . '.mouseover(function (event) {t_' . $phylo_structure['cluster_univ_id'][$i] . '.show();' . $showlinks . '});
+            c_' . $phylo_structure['cluster_univ_id'][$i] . '.mouseout(function (event) {t_' . $phylo_structure['cluster_univ_id'][$i] . '.hide();});
+            c_' . $phylo_structure['cluster_univ_id'][$i] . '.click(function (event) {window.open("phylobranch.php?stream_id=' . $phylo_structure['stream_id'] . '&id_cluster=' . $phylo_structure['cluster_univ_id'][$i] . '&periode=' . $phylo_structure['period1'][$i] . '-' . $phylo_structure['period2'][$i] . '","_self");});               
+        ';
+        }
+    };
+
+    return $terms;
 }
 
-function create_phylo_structure($partition_id,$database) {
-        
+function create_phylo_structure($partition_id, $database) {
+
     //Pour fabriquation de phylo avec Raphael. 
     //crée une structure de type multi_array décrivant une macro-branch de phylogénie avec les champs suivants
     // cluster_ids (identifiant unique d'un cluster),period1,period2, 
     // length_to_end (distance restant sur la sous chaine),length_from_start (distance parcourue depuis le début),fathers,sons     
     // x est la période et y est calculé de façon a optimiser le nombre de sous branches rectilignes et minimiser 
-    
     // on sélectionne tous les clusters
 
-    $dbh = new PDO("sqlite:".$database);    
+    $dbh = new PDO("sqlite:" . $database);
     // calcul du nombre de clusters (à optimiser)
 //    $nbClusters=0;
 //    $sql = "SELECT * FROM clusters WHERE stream_id=". $partition_id." GROUP BY cluster_id,period";;
@@ -135,15 +135,15 @@ function create_phylo_structure($partition_id,$database) {
 //        {
 //        $nbClusters+=1;
 //        }        
-    
+
     $phylo = array();
-    $phylo['stream_id']=$partition_id;
-    $listed_clusters=array();
-    $count=0;   
-    
-    $sql="SELECT * FROM clusters WHERE stream_id=". $partition_id;    
-    $counter=0;
-    
+    $phylo['stream_id'] = $partition_id;
+    $listed_clusters = array();
+    $count = 0;
+
+    $sql = "SELECT * FROM clusters WHERE stream_id=" . $partition_id;
+    $counter = 0;
+
     // on importe les données
      foreach ($dbh->query($sql) as $ligne){        
         $cluster_id_exist = array_search($ligne['cluster_univ_id'],$listed_clusters);
@@ -470,10 +470,10 @@ function map($x,$xmin,$xmax,$X,$Y){
 }    
 
 function block($terms,$width,$length){
-    // concatène les élément string d'un array terms[poids] en un bloc de texte de taille max length
+    // concatène les élément string d'un array en un bloc de texte de taille max length
          $termstemp = '';      
          $left=false;
-            foreach ($terms as $key => $value) {                
+            foreach ($terms as $key) {                
                 if ($length > strlen($term)) {
                     $items = split(' ', $key);
                     for ($i=0; $i<(count($items)-1);$i++) {
@@ -495,9 +495,25 @@ function block($terms,$width,$length){
                 }
               
             }
+            
+            if (substr($term,-2)==='\n'){
+                $term=substr($term,0, -2);                
+            }
+            if (substr($term,-2)===', '){
+                $term=substr($term,0, -2);                
+            }
+            
+            
               if($left){
                     $term.='[...]';
                 }
             return trim($term)  .'.';
+}
+function cmp($a, $b) {
+    // trie par ordre décroissant
+    if ($a == $b) {
+        return 0;
+    }
+    return ($a > $b) ? -1 : 1;
 }
 ?>

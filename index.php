@@ -14,16 +14,16 @@ include("include/header.php");
 
 //////// pré calculs ////////
 $dbh = new PDO("sqlite:".$sqlite_database);    
+$suprathematiques_label=array();
 
-$stream_size=array();
-    $sql = "SELECT stream_id,count(*) FROM clusters GROUP BY stream_id";;
+$stream_info=array();
+    $sql = "SELECT suprathematique,suprathematique_label,stream_id,count(*) FROM clusters GROUP BY stream_id order by suprathematique";;
     foreach ($dbh->query($sql) as $row)
         {       
-        $stream_size[$row['0']]=$row['1'];
+        $stream_info[$row['stream_id']]=$row['suprathematique'];
+        $suprathematiques_label[$row['suprathematique']]=$row['suprathematique_label'];
         }
-$stream_id=array_keys($stream_size);
-
-
+$stream_id=array_keys($stream_info);
         
 ///////////////// Module pour préparer la visu de phylo en Raphael
 $all_period1=array();
@@ -49,11 +49,18 @@ $phylo_structure=array(); // ensemble des branches phylogénétiques
 
 // on calcul la taille de la feuille raphael ainsi que les phylos
 $nb_bigstream=0;
+$suprathematique=0;
 for ($k=0;$k<count($stream_id);$k++){
-    $phylo_structure[$stream_id[$k]]=create_phylo_structure($stream_id[$k],$sqlite_database);    // importe la branche et calcule la spatialisation        
-    $ytrans[$k+1]=$ytrans[$k]+(max($phylo_structure[$stream_id[$k]]['y'])-1)*$branch_width;
-    if (count($phylo_structure[$stream_id[$k]]['cluster_univ_id'])>$small_stream_filter){
+    $phylo_structure[$stream_id[$k]]=create_phylo_structure($stream_id[$k],$sqlite_database);    // importe la branche et calcule la spatialisation           
+    if (count($phylo_structure[$stream_id[$k]]['cluster_univ_id'])>$small_stream_filter){        
         $nb_bigstream+=1;
+        $ytrans[$k+1]=$ytrans[$k]+(max($phylo_structure[$stream_id[$k]]['y'])-1)*$branch_width;
+        if ($suprathematique!=$stream_info[$k]){
+            $ytrans[$k+1]=$ytrans[$k+1]+$suprathematique_margin;
+            $suprathematique=$stream_info[$k];
+        }
+    }else{
+        $ytrans[$k+1]=$ytrans[$k];
     }
 }
 
@@ -75,10 +82,17 @@ echo '
             var R = Raphael("metro",'.$screen_width.','.($ytrans[$nb_bigstream]+20).'), r = 8;
             d=200;            
             ';
-
+$suprathematique=0;
 for ($k=0;$k<count($stream_id);$k++){
     if (count($phylo_structure[$stream_id[$k]]['cluster_univ_id'])>$small_stream_filter){
-            phylo_plot($phylo_structure[$stream_id[$k]],$ytrans[$k],$timespan,$period_min,$branch_width,$sqlite_database,$screen_width,$r);    // génère le code raphael    
+//        if ($suprathematique!=$stream_info[$k]){
+//            echo 'var streamlabel = R.text(10,'.($ytrans[$k]-$suprathematique_margin/2).',"' . $suprathematiques_label[$suprathematique].'");                
+//            streamlabel.attr({ "text-anchor":"start","font-size":10,"font-weight":"bold","fill":"grey"});        
+//            ';  
+//            $suprathematique=$stream_info[$k];
+//        }
+        
+            phylo_plot($phylo_structure[$stream_id[$k]],$ytrans[$k],$timespan,$period_min,$branch_width,$sqlite_database,$screen_width,$r_global);    // génère le code raphael    
     }
 }
 
@@ -87,8 +101,8 @@ echo '
         };
     </script>';
 
-
-echo '<div id="metro"></div>
+echo '<div align=center><font size="6" face="arial" color="grey">Liste des thématiques</font>';
+echo '<div id="metro" align=center></div>
     </body>';
 
 
