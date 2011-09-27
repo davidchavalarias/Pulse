@@ -50,7 +50,9 @@ echo 'var streamlabel = R.text('.(10).','.($ytrans+$branch_width).',"' . $stream
         echo 'var y_' . $phylo_structure['cluster_univ_id'][$i] . '=' . $ytrans . '+(' . $branch_width . ')*' . (($phylo_structure['y'][$i] - 1)) . ';
             ';
         if ($store == 1) {// on stocke les coordonnées en base
-            $sql = "INSERT INTO positions(cluster_univ_id,pos_x_phylo,pos_y_phylo) VALUES ('" . $phylo_structure['cluster_univ_id'][$i] . "'," . map($phylo_structure['x'][$i], $period_min, ($period_min + $timespan), 40, ($screen_width - 40)) . "," . $ytrans . '+(' . $branch_width . ')*' . (($phylo_structure['y'][$i] - 1)) . ")";
+            $sql = "UPDATE OR REPLACE cluster_infos SET pos_x_phylo=" . map($phylo_structure['x'][$i], $period_min, ($period_min + $timespan), 40, ($screen_width - 40)) .
+                    ",pos_y_phylo=" . $ytrans . '+(' . $branch_width . ')*' . (($phylo_structure['y'][$i] - 1)) . 
+                    "WHERE cluster_univ_id='" . $phylo_structure['cluster_univ_id'][$i] . "'";                
             $db->exec($sql);
         }
     }
@@ -66,33 +68,18 @@ echo 'var streamlabel = R.text('.(10).','.($ytrans+$branch_width).',"' . $stream
         }
     };
 
-    $r_array = array();
-    $hue_array = array();
-    for ($i = 0; $i < count($phylo_structure['cluster_univ_id']); $i++) {
-        // pour ajuster la taille à la popularité
-        $sql_cluster_weight = "SELECT sum(weight),cluster_univ_id FROM projection where weight>0.6 AND cluster_univ_id=" . $phylo_structure['cluster_univ_id'][$i];
-        //pt($sql_cluster_weight);
-        //pt('cluster weight='.$cluster_weight['sum(weight)']);
-        foreach ($db->query($sql_cluster_weight) as $cluster_weight) {
-            $r_array[$cluster_weight['cluster_univ_id']] = 5 + $cluster_weight['sum(weight)'] / 100;
-        }
-    }
-    
-    $max=max($r_array);
-    $min=min($r_array);
-    
-    foreach ($r_array as $clusterId => $value) {
-        if ($id_cluster==-1){
-            $hue_array[$clusterId]=($phylo_structure['stream_id'] % 15) / 15;
-        }else{
-            $hue_array[$clusterId]=1-map($value, $min, $max, .7, 1);        
-        }
-        $r_array[$clusterId] =map($value, $min, $max, $r, 1.5*$r);
-    }
-    
-// on trace les noeuds
+   // on trace les noeuds
     $bottom = $branch_width * (1 + max($phylo_structure['y'])); // Bas de la page
-    for ($i = 0; $i < count($phylo_structure['cluster_univ_id']); $i++) {                        
+    for ($i = 0; $i < count($phylo_structure['cluster_univ_id']); $i++) {  
+        
+        // on prépare les variables
+            $sql = "SELECT activity,color FROM cluster_infos WHERE cluster_univ_id=" . $phylo_structure['cluster_univ_id'][$i];
+            foreach ($db->query($sql) as $ligne) {
+                $hue=$ligne['color'];
+                $activity=$ligne['activity'];
+                
+            }
+            
         if ($id_cluster == $phylo_structure['cluster_univ_id'][$i]) {// on est sur le cluster sélectionné                       
             
             // on prépare la liste des mots clef du cluster sélectionné pour affichage
@@ -107,13 +94,15 @@ echo 'var streamlabel = R.text('.(10).','.($ytrans+$branch_width).',"' . $stream
             // on prépare la liste des termes avec retour à la ligne
             $term = block(array_keys($terms), 80, 500);
 
+            
+            
             echo '
-            R.circle(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . ', 2*' . $r_array[$phylo_structure['cluster_univ_id'][$i]] . ');
+            R.circle(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . ', 2*' . $activity . ');
             var t = R.text(70,14,"' . $phylo_structure['cluster_label_freq'][$i] . ' - ' . $phylo_structure['cluster_univ_id'][$i] . '");                
             var twidth = t.getBBox().width; 
             var trans=twidth*Math.cos(Math.pi-10);
             t.attr({ "text-anchor":"start","font-size":22,"font-weight":"bold","fill":"grey"});        
-            var bal=R.ball(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . ', '.$r_array[$phylo_structure['cluster_univ_id'][$i]].', '.$hue_array[$phylo_structure['cluster_univ_id'][$i]].')                          
+            var bal=R.ball(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . ', '.$activity.', '.$hue.')                          
                 .click(function (event) {window.open("phylobranch.php?stream_id=' . $phylo_structure['stream_id'] . '&id_cluster=' . $phylo_structure['cluster_univ_id'][$i] . '&periode=' . $phylo_structure['period1'][$i] . '-' . $phylo_structure['period2'][$i] . '","_self");});';
 
             // on affiche les infos complémentaires
@@ -122,12 +111,12 @@ echo 'var streamlabel = R.text('.(10).','.($ytrans+$branch_width).',"' . $stream
             ';
         } else {
             echo '         
-            var bal_' . $phylo_structure['cluster_univ_id'][$i] . '=R.ball(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . ', ' . $r_array[$phylo_structure['cluster_univ_id'][$i]] . ', '.$hue_array[$phylo_structure['cluster_univ_id'][$i]].');                                    
+            var bal_' . $phylo_structure['cluster_univ_id'][$i] . '=R.ball(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . ', ' . $activity . ', '.$hue.');                                    
             var t_' . $phylo_structure['cluster_univ_id'][$i] . ' = R.text(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . '-15, "' . $phylo_structure['cluster_label_freq'][$i] . '");                           
         
             t_' . $phylo_structure['cluster_univ_id'][$i] . '.attr({"text-anchor":"center","font-size":15});        
             t_' . $phylo_structure['cluster_univ_id'][$i] . '.hide();
-            var c_' . $phylo_structure['cluster_univ_id'][$i] . '=R.circle((x_' . $phylo_structure['cluster_univ_id'][$i] . '),y_' . $phylo_structure['cluster_univ_id'][$i] . ', 1.5*' . $r_array[$phylo_structure['cluster_univ_id'][$i]] . ').attr({fill: "red",opacity:0});';
+            var c_' . $phylo_structure['cluster_univ_id'][$i] . '=R.circle((x_' . $phylo_structure['cluster_univ_id'][$i] . '),y_' . $phylo_structure['cluster_univ_id'][$i] . ', 1.5*' . $activity. ').attr({fill: "red",opacity:0});';
 
             echo 'c_' . $phylo_structure['cluster_univ_id'][$i] . '.mouseover(function (event) {t_' . $phylo_structure['cluster_univ_id'][$i] . '.show();' . $showlinks . '});
             c_' . $phylo_structure['cluster_univ_id'][$i] . '.mouseout(function (event) {t_' . $phylo_structure['cluster_univ_id'][$i] . '.hide();});
@@ -480,16 +469,33 @@ function array_search_filtered_sup($array, $dim_filter, $dim_filter_val, $target
     return $result;
 }
 
-function map($x,$xmin,$xmax,$X,$Y){
+function map($x,$xmin,$xmax,$Xmin,$Xmax){
     // normalise $x entre $X et $Y sachant que les valeurs parcourent $xmin,$xmax   
     
     if ($xmax==$xmin){
-        return 40;
+        return $xmax;
     }else{
-        return $X+($x-$xmin)/($xmax-$xmin)*($Y-$X);
+        return $Xmin+($x-$xmin)/($xmax-$xmin)*($Xmax-$Xmin);
     }
     
 }    
+function map_proportional($x,$xmin,$xmax,$Xmin,$Xmax){
+    // normalise en conservant les ratio sauf si la taille min est atteinte
+    
+    if ($xmax==$xmin){
+        return $xmax;
+    }else{
+        if($x*$Xmax/$xmax<$Xmin){
+            //pt($x.' mapped to '.$Xmin);
+            return $Xmin;
+        }else{
+            //pt($x.' mapped to '.$Xmin);
+            return $x*$Xmax/$xmax;
+        }
+    }
+    
+}    
+
 
 function block($terms,$width,$length){
     // concatène les élément string d'un array en un bloc de texte de taille max length

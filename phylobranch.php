@@ -49,7 +49,7 @@ echo '
             
 // affichage du boutons pour revenir à la liste de branches
 echo 'R.rect(' . (5 + 30) . ',5, 20,20, 5);
-      var bal=R.ball(' . (30 + 15) . ',0+15, 8,.8)                          
+      var bal=R.ball(' . (30 + 15) . ',0+15, 8,'.(($phylo_structure['stream_id'] % 15) / 15).')                          
       .click(function (event) {window.open("index.php","_self");});';
 
 //  affichage de la branche    
