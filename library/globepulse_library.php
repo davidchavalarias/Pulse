@@ -50,7 +50,7 @@ echo 'var streamlabel = R.text('.(10).','.($ytrans+$branch_width).',"' . $stream
         echo 'var y_' . $phylo_structure['cluster_univ_id'][$i] . '=' . $ytrans . '+(' . $branch_width . ')*' . (($phylo_structure['y'][$i] - 1)) . ';
             ';
         if ($store == 1) {// on stocke les coordonnées en base
-            $sql = "INSERT INTO positions(cluster_univ_id,pos_x_phylo,pos_y_phylo) VALUES ('" . $phylo_structure['cluster_univ_id'][$i] . "'," . map($phylo_structure['x'][$i], $period_min, ($period_min + $timespan), 40, ($screen_width - 40)) . "," . $branch_width * (($phylo_structure['y'][$i] - 1)) . ")";
+            $sql = "INSERT INTO positions(cluster_univ_id,pos_x_phylo,pos_y_phylo) VALUES ('" . $phylo_structure['cluster_univ_id'][$i] . "'," . map($phylo_structure['x'][$i], $period_min, ($period_min + $timespan), 40, ($screen_width - 40)) . "," . $ytrans . '+(' . $branch_width . ')*' . (($phylo_structure['y'][$i] - 1)) . ")";
             $db->exec($sql);
         }
     }
@@ -71,7 +71,17 @@ echo 'var streamlabel = R.text('.(10).','.($ytrans+$branch_width).',"' . $stream
     $hue = ($phylo_structure['stream_id'] % 15) / 15;
     $bottom = $branch_width * (1 + max($phylo_structure['y'])); // Bas de la page
     for ($i = 0; $i < count($phylo_structure['cluster_univ_id']); $i++) {
-
+        
+        
+        // pour ajuster la taille à la popularité
+        //$sql_cluster_weight = "SELECT sum(article_id*weight) FROM projection where cluster_univ_id=" . $phylo_structure['cluster_univ_id'][$i];        
+        //pt($sql_cluster_weight);
+        //pt($r );
+        
+        //foreach ($db->query($sql_cluster_weight) as $cluster_weight) {
+        //    $r =log($cluster_weight['sum(article_id*weight)']);
+        //}
+        
         if ($id_cluster == $phylo_structure['cluster_univ_id'][$i]) {// on est sur le cluster sélectionné                       
             
             // on prépare la liste des mots clef du cluster sélectionné pour affichage
@@ -88,7 +98,7 @@ echo 'var streamlabel = R.text('.(10).','.($ytrans+$branch_width).',"' . $stream
 
             echo '
             R.circle(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . ', 2*' . $r . ');
-            var t = R.text(70,14,"' . $phylo_structure['label'][$i] . ' - ' . $phylo_structure['cluster_univ_id'][$i] . '");                
+            var t = R.text(70,14,"' . $phylo_structure['cluster_label_freq'][$i] . ' - ' . $phylo_structure['cluster_univ_id'][$i] . '");                
             var twidth = t.getBBox().width; 
             var trans=twidth*Math.cos(Math.pi-10);
             t.attr({ "text-anchor":"start","font-size":22,"font-weight":"bold","fill":"grey"});        
@@ -102,7 +112,7 @@ echo 'var streamlabel = R.text('.(10).','.($ytrans+$branch_width).',"' . $stream
         } else {
             echo '         
             var bal_' . $phylo_structure['cluster_univ_id'][$i] . '=R.ball(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . ', ' . $r . ', ' . $hue . ');                                    
-            var t_' . $phylo_structure['cluster_univ_id'][$i] . ' = R.text(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . '-15, "' . $phylo_structure['label'][$i] . '");                           
+            var t_' . $phylo_structure['cluster_univ_id'][$i] . ' = R.text(x_' . $phylo_structure['cluster_univ_id'][$i] . ',y_' . $phylo_structure['cluster_univ_id'][$i] . '-15, "' . $phylo_structure['cluster_label_freq'][$i] . '");                           
         
             t_' . $phylo_structure['cluster_univ_id'][$i] . '.attr({"text-anchor":"center","font-size":15});        
             t_' . $phylo_structure['cluster_univ_id'][$i] . '.hide();
@@ -157,6 +167,7 @@ function create_phylo_structure($partition_id, $database) {
             $phylo['period2'][] = $p[1];
             
             $phylo['label'][] = $ligne['cluster_label'];
+            $phylo['cluster_label_freq'][] = $ligne['cluster_label_freq'];
             
             $phylo['length_to_end'][] = 0;
             $phylo['length_to_start'][] = 0;

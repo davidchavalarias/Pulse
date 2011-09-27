@@ -38,6 +38,7 @@ $ymax=max($phylo_structure['y']);
 /////////////////////////////////////////////
 // Script de visu avec raphael
 ///////////////////////////////////////////
+//phylo_plot($phylo_structure, $ytrans, $timespan, $period_min, $branch_width, $sqlite_database, $screen_width, $r);    // génère le code raphael    
 
 echo '
 <script type="text/javascript" charset="utf-8">
@@ -110,7 +111,7 @@ for ($i = 0; $i < $nb_articles_displayed; $i++) {
 }
 
 // indication du nombre d'articles non affichés
-pt('<font size="1" face="arial" color="grey">['.$nb_articles_displayed.' on '.count($paper_ids).' references displayed. ]</font>');
+pt('<font size="1" face="arial" color="grey">['.$nb_articles_displayed.' on '.count($paper_ids).' references displayed.]</font>');
 pt('</p>');
 
 echo '</div></body>';

@@ -23,8 +23,7 @@ foreach ($db->query($sql) as $ligne){
             $term = '';
             $terms = array(); // terms avec leurs poids
             foreach ($db->query($sql_terms) as $row) {
-                $sql_freq= 'SELECT CompteDeid FROM termsOccByPeriod WHERE term="' .$row['term'].'" AND period="'.$ligne['period'].'"';
-                pt($sql_freq);
+                $sql_freq= 'SELECT CompteDeid FROM termsOccByPeriod WHERE term="' .$row['term'].'" AND period="'.$ligne['period'].'"';;
                 foreach ($db->query($sql_freq) as $freq) {
                     $terms[$row['term']] = $row['weight']*$freq[CompteDeid];                
                 }
@@ -34,7 +33,8 @@ foreach ($db->query($sql) as $ligne){
             $term_only=array_keys($terms);
             $sql_ins="UPDATE OR REPLACE clusters SET cluster_label_freq='".$term_only[0].'-'.$term_only[1]."' WHERE cluster_univ_id=".$ligne['cluster_univ_id'];
             pt($sql_ins);
-            $db->exec($sql_ins);            
+            $db->exec($sql_ins);   
+            
 }
 
 
